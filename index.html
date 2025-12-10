@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planta Interativa - Clínica</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🏥 Planta Interativa da Clínica</h1>
+            <div class="controls">
+                <label for="floor-select" class="floor-label">Andar:</label>
+                <select id="floor-select" class="floor-select">
+                    <option value="1">1º Andar</option>
+                    <option value="2">2º Andar</option>
+                </select>
+                <button id="add-area-btn" class="btn btn-primary">+ Adicionar Área</button>
+                <button id="upload-btn" class="btn btn-secondary">📤 Upload Planta</button>
+                <button id="reset-btn" class="btn btn-danger">🔄 Resetar</button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Upload Section -->
+            <div id="upload-section" class="upload-section">
+                <div class="upload-box">
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <h2>Faça upload da planta do andar</h2>
+                    <p>Arraste e solte a imagem aqui ou clique para selecionar</p>
+                    <input type="file" id="file-input" accept="image/*" hidden>
+                    <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">
+                        Selecionar Arquivo
+                    </button>
+                </div>
+            </div>
+
+            <!-- Plant View Section -->
+            <div id="plant-section" class="plant-section" style="display: none;">
+                <div class="plant-container">
+                    <div class="plant-wrapper">
+                        <img id="plant-image" src="" alt="Planta da Clínica" class="plant-image">
+                        <svg id="areas-overlay" class="areas-overlay"></svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <aside id="sidebar" class="sidebar">
+                <div class="sidebar-header">
+                    <h2 id="sidebar-title">Áreas</h2>
+                    <button id="close-sidebar" class="close-btn">×</button>
+                </div>
+                <div class="sidebar-content">
+                    <div id="areas-list" class="areas-list"></div>
+                    <div id="area-details" class="area-details" style="display: none;">
+                        <h3 id="area-name"></h3>
+                        <div class="equipment-section">
+                            <h4>💻 Notebooks</h4>
+                            <div id="notebooks-list" class="equipment-list"></div>
+                            <button class="btn btn-small" onclick="addEquipment('notebook')">+ Adicionar Notebook</button>
+                        </div>
+                        <div class="equipment-section">
+                            <h4>🖨️ Impressoras</h4>
+                            <div id="printers-list" class="equipment-list"></div>
+                            <button class="btn btn-small" onclick="addEquipment('printer')">+ Adicionar Impressora</button>
+                        </div>
+                        <div class="area-actions">
+                            <button class="btn btn-danger" onclick="deleteArea()">🗑️ Excluir Área</button>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <!-- Modal para adicionar/editar área -->
+    <div id="area-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Adicionar Nova Área</h2>
+                <button class="close-btn" onclick="closeAreaModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="area-name-input">Nome da Área:</label>
+                    <input type="text" id="area-name-input" placeholder="Ex: Recepção, Consultório 1, etc.">
+                </div>
+                <div class="form-group">
+                    <label for="area-type-input">Tipo:</label>
+                    <select id="area-type-input">
+                        <option value="recepcao">Recepção</option>
+                        <option value="consultorio">Consultório</option>
+                        <option value="sala">Sala</option>
+                        <option value="banheiro">Banheiro</option>
+                        <option value="corredor">Corredor</option>
+                        <option value="outro">Outro</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Desenhe a área na planta:</label>
+                    <div class="info-box" style="background: #dbeafe; border-left-color: #2563eb;">
+                        <p style="margin: 0; font-weight: 500; color: #1e40af;">
+                            📍 <strong>Instruções:</strong><br>
+                            1. Preencha o nome e tipo da área acima<br>
+                            2. Clique e arraste na planta (à direita) para desenhar um retângulo<br>
+                            3. Quando terminar de desenhar, clique em "Salvar Área"
+                        </p>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeAreaModal()">Cancelar</button>
+                    <button class="btn btn-primary" onclick="saveArea()">Salvar Área</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para adicionar equipamento -->
+    <div id="equipment-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="equipment-modal-title">Adicionar Equipamento</h2>
+                <button class="close-btn" onclick="closeEquipmentModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <!-- Campos para Notebook -->
+                <div id="notebook-fields">
+                    <div class="form-group">
+                        <label for="equipment-name-input">Nome da Máquina:</label>
+                        <input type="text" id="equipment-name-input" placeholder="Ex: PC-RECEPCAO-01">
+                    </div>
+                    <div class="form-group">
+                        <label for="equipment-anydesk-input">Anydesk:</label>
+                        <input type="text" id="equipment-anydesk-input" placeholder="Ex: 123 456 789">
+                    </div>
+                    <div class="form-group">
+                        <label for="equipment-kaspersky-input">Kaspersky:</label>
+                        <input type="text" id="equipment-kaspersky-input" placeholder="Ex: Ativo / Inativo">
+                    </div>
+                    <div class="form-group">
+                        <label for="equipment-status-input">Status:</label>
+                        <select id="equipment-status-input">
+                            <option value="ativo">Ativo</option>
+                            <option value="inativo">Inativo</option>
+                            <option value="manutencao">Em Manutenção</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="equipment-storage-input">Armazenamento:</label>
+                        <input type="text" id="equipment-storage-input" placeholder="Ex: 500GB SSD / 1TB HDD">
+                    </div>
+                </div>
+                
+                <!-- Campo para Impressora -->
+                <div id="printer-fields" style="display: none;">
+                    <div class="form-group">
+                        <label for="equipment-model-input">Modelo:</label>
+                        <input type="text" id="equipment-model-input" placeholder="Ex: HP LaserJet Pro M404dn">
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeEquipmentModal()">Cancelar</button>
+                    <button class="btn btn-primary" onclick="saveEquipment()">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para visualizar equipamento -->
+    <div id="equipment-view-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="equipment-view-title">Detalhes do Equipamento</h2>
+                <button class="close-btn" onclick="closeEquipmentViewModal()">×</button>
+            </div>
+            <div class="modal-body" id="equipment-view-body">
+                <!-- Conteúdo será preenchido dinamicamente -->
+            </div>
+            <div class="modal-actions" style="justify-content: center;">
+                <button class="btn btn-secondary" onclick="closeEquipmentViewModal()">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+
