@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_FILE = path.join(process.cwd(), 'data.json');
+// No Vercel, usa /tmp para escrita ou a raiz do projeto
+const DATA_FILE = path.join(__dirname, '..', 'data.json');
 
 // Garante que existe um arquivo inicial
 function ensureDataFile() {
@@ -18,6 +19,15 @@ function ensureDataFile() {
 }
 
 module.exports = async (req, res) => {
+  // Headers CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
   ensureDataFile();
   
   if (req.method === 'GET') {
