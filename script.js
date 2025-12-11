@@ -11,8 +11,10 @@ let state = {
     draggingIcon: null
 };
 
-// Endpoint da API: mesma origem do front (server.js serve estático + API)
-const API_URL = window.location.origin || 'http://localhost:3001';
+// Endpoint da API: detecta se está no Vercel ou local
+const isVercel = window.location.hostname.includes('vercel.app') || window.location.hostname.includes('vercel.com');
+const API_BASE = isVercel ? '/api' : '';
+const API_URL = window.location.origin + API_BASE;
 
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('file-input').addEventListener('change', handleFileUpload);
