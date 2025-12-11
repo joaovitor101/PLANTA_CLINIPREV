@@ -1001,7 +1001,7 @@ function openAreaInfoModal(areaId) {
         : area.printers.map(p => `
             <div class="area-info-item">
                 <div class="area-info-title">${p.model || 'Sem modelo'}</div>
-                <div class="area-info-meta">Impressora</div>
+                
             </div>
         `).join('');
 
@@ -1015,7 +1015,7 @@ function openAreaInfoModal(areaId) {
         <div style="display:flex; flex-direction:column; gap:1rem;">
             <div>
                 <div class="area-info-title" style="font-size:1.1rem;">${area.name}</div>
-                <div class="area-info-meta" style="text-transform: capitalize;">${area.type}</div>
+                
             </div>
             <div>
                 <h3 style="margin:0 0 0.5rem 0;">Notebooks</h3>
