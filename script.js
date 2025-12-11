@@ -183,6 +183,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Verificar se a API está disponível
     checkApiConnection();
     
+    // Atualizar overlay quando a janela for redimensionada
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            const img = document.getElementById('plant-image');
+            if (img && img.complete && img.naturalWidth > 0) {
+                updateAreasOverlay();
+            }
+        }, 150);
+    });
+    
     loadFromStorage();
 });
 
@@ -299,8 +311,15 @@ function displayPlant(imageUrl) {
     document.getElementById('upload-section').style.display = 'none';
     document.getElementById('plant-section').style.display = 'block';
     const img = document.getElementById('plant-image');
-    img.src = imageUrl;
-    img.onload = () => {
+    
+    // Função para atualizar dimensões e overlay
+    const updateDimensions = () => {
+        if (!img.complete || !img.naturalWidth || !img.naturalHeight) {
+            // Se a imagem ainda não carregou, tenta novamente
+            setTimeout(updateDimensions, 50);
+            return;
+        }
+        
         const maxH = window.innerHeight - 250;
         const maxW = window.innerWidth - 400;
         let w = img.naturalWidth, h = img.naturalHeight;
@@ -308,8 +327,24 @@ function displayPlant(imageUrl) {
         if (w > maxW) { h = h * (maxW / w); w = maxW; }
         img.style.width = w + 'px';
         img.style.height = h + 'px';
-        updateAreasOverlay();
+        
+        // Aguardar um frame para garantir que o DOM foi atualizado
+        requestAnimationFrame(() => {
+            updateAreasOverlay();
+        });
     };
+    
+    // Se a imagem já está carregada, atualiza imediatamente
+    if (img.complete && img.naturalWidth > 0 && img.naturalHeight > 0 && img.src === imageUrl) {
+        updateDimensions();
+    } else {
+        // Caso contrário, define o src e espera o onload
+        img.src = imageUrl;
+        img.onload = updateDimensions;
+        img.onerror = () => {
+            console.error('Erro ao carregar imagem');
+        };
+    }
 }
 
 function handleFloorChange(e) {
@@ -469,18 +504,31 @@ window.saveArea = saveArea;
 function updateAreasOverlay() {
     const overlay = document.getElementById('areas-overlay');
     const img = document.getElementById('plant-image');
-    if (!img.complete || !img.naturalWidth || !img.naturalHeight) {
-        if (!img.complete) img.onload = updateAreasOverlay;
+    
+    // Verificar se a imagem está completamente carregada
+    if (!img || !img.complete || !img.naturalWidth || !img.naturalHeight) {
+        if (img && !img.complete) {
+            img.onload = () => {
+                // Aguardar um frame para garantir que o DOM foi atualizado
+                requestAnimationFrame(() => {
+                    updateAreasOverlay();
+                });
+            };
+        }
         return;
     }
+    
+    const wrapper = document.querySelector('.plant-wrapper');
+    if (!wrapper) {
+        return;
+    }
+    
     const isModalOpen = document.getElementById('area-modal').classList.contains('active');
     const tempRect = document.getElementById('temp-rect');
     overlay.innerHTML = '';
     if (isModalOpen && tempRect && tempRect.parentNode) {
         overlay.appendChild(tempRect.cloneNode(true));
     }
-    const wrapper = document.querySelector('.plant-wrapper');
-    const wrapperRect = wrapper.getBoundingClientRect();
     
     // Usar dimensões do wrapper para cobrir toda a área disponível
     overlay.setAttribute('viewBox', `0 0 ${img.naturalWidth} ${img.naturalHeight}`);
@@ -1169,16 +1217,15 @@ async function loadFromStorage() {
     document.getElementById('floor-select').value = state.currentFloor;
     const url = state.plantImages[state.currentFloor];
     if (url) {
-        displayPlant(url);
+        // Aguardar um pouco para garantir que o DOM está pronto
+        requestAnimationFrame(() => {
+            displayPlant(url);
+        });
     } else {
         document.getElementById('upload-section').style.display = 'flex';
         document.getElementById('plant-section').style.display = 'none';
     }
     updateAreasList();
-    // Garantir que o overlay seja atualizado mesmo se não houver imagem
-    setTimeout(() => {
-        updateAreasOverlay();
-    }, 100);
 }
 
 // ---------- Imagem por área ----------
