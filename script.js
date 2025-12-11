@@ -576,12 +576,19 @@ function updateAreasOverlay() {
         overlay.appendChild(label);
 
         // Botão único "+" para abrir todas as informações da área
-        const plusSize = 80;
+        const plusSize = 160; // tamanho REAL do ícone
+        const offset = 6;    // desce um pouco para ficar dentro do card
+        
         const plusGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         plusGroup.setAttribute('class', 'equipment-icon');
         plusGroup.style.cursor = 'pointer';
         plusGroup.style.pointerEvents = 'all';
-        plusGroup.setAttribute('transform', `translate(${area.coords.x + 12}, ${area.coords.y + 12})`);
+        
+        const centerX = area.coords.x + area.coords.width / 2 - plusSize / 2;
+        const topY = area.coords.y - plusSize / 2 + offset;
+        
+        plusGroup.setAttribute('transform', `translate(${centerX}, ${topY + 130})`);
+        
 
         const plusBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
         plusBg.setAttribute('x', 0);
