@@ -2,7 +2,6 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-
 }
 
 :root {
@@ -576,7 +575,7 @@ body {
 
 .area-info-modal-content {
     max-width: 1900px;
-    width: min(99vw, 1600px);    overflow-y: hidden;
+    width: min(99vw, 1600px);
 }
 
 .modal-header {

@@ -178,8 +178,25 @@ document.addEventListener('DOMContentLoaded', () => {
     window.globalDragState = globalDragState;
     window.resizeState = resizeState;
     
+    // Verificar se a API está disponível
+    checkApiConnection();
+    
     loadFromStorage();
 });
+
+// Verificar conexão com a API
+async function checkApiConnection() {
+    try {
+        const response = await fetch(`${API_URL}/data`);
+        if (response.ok) {
+            console.log('✅ API conectada - dados serão salvos automaticamente');
+        } else {
+            console.warn('⚠️ API retornou erro - usando apenas localStorage');
+        }
+    } catch (err) {
+        console.warn('⚠️ API não disponível - usando apenas localStorage. Certifique-se de que o servidor está rodando (node server.js)');
+    }
+}
 
 // Exportar/Importar dados
 function exportData() {
@@ -557,21 +574,13 @@ function updateAreasOverlay() {
         overlay.appendChild(label);
 
         // Botão único "+" para abrir todas as informações da área
-        const plusSize = 150; // tamanho REAL do ícone
-        const offset = 6;    // desce um pouco para ficar dentro do card
-        
+        const plusSize = 80;
         const plusGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         plusGroup.setAttribute('class', 'equipment-icon');
         plusGroup.style.cursor = 'pointer';
         plusGroup.style.pointerEvents = 'all';
-        
-        const centerX = area.coords.x + area.coords.width / 2 - plusSize / 2;
-        const topY = area.coords.y - plusSize / 2 + offset;
-        
-        plusGroup.setAttribute('transform', `translate(${centerX}, ${topY + 120})`);
-        
-        
-        
+        plusGroup.setAttribute('transform', `translate(${area.coords.x + 12}, ${area.coords.y + 12})`);
+
         const plusBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
         plusBg.setAttribute('x', 0);
         plusBg.setAttribute('y', 0);
@@ -983,7 +992,7 @@ function openAreaInfoModal(areaId) {
         : area.printers.map(p => `
             <div class="area-info-item">
                 <div class="area-info-title">${p.model || 'Sem modelo'}</div>
-
+                <div class="area-info-meta">Impressora</div>
             </div>
         `).join('');
 
@@ -997,7 +1006,7 @@ function openAreaInfoModal(areaId) {
         <div style="display:flex; flex-direction:column; gap:1rem;">
             <div>
                 <div class="area-info-title" style="font-size:1.1rem;">${area.name}</div>
-              
+                <div class="area-info-meta" style="text-transform: capitalize;">${area.type}</div>
             </div>
             <div>
                 <h3 style="margin:0 0 0.5rem 0;">Notebooks</h3>
@@ -1071,23 +1080,42 @@ window.closeAreaInfoModal = closeAreaInfoModal;
 // Persistência local + API
 async function saveToApi() {
     try {
-        await fetch(`${API_URL}/data`, {
+        const response = await fetch(`${API_URL}/data`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(state)
         });
+        if (!response.ok) {
+            throw new Error(`Erro HTTP: ${response.status}`);
+        }
+        console.log('Dados salvos na API com sucesso');
+        return true;
     } catch (err) {
-        console.warn('Falha ao salvar na API, mantendo apenas localStorage:', err.message);
+        console.error('Falha ao salvar na API:', err.message);
+        return false;
     }
 }
 
-function saveToStorage() {
-    try {
-        localStorage.setItem('clinicPlantData', JSON.stringify(state));
-    } catch (e) {
-        console.error('Erro ao salvar dados:', e);
+async function saveToStorage() {
+    // Tenta salvar na API primeiro (prioridade)
+    const apiSaved = await saveToApi();
+    
+    // Fallback para localStorage se API falhar
+    if (!apiSaved) {
+        try {
+            localStorage.setItem('clinicPlantData', JSON.stringify(state));
+            console.log('Dados salvos no localStorage como fallback');
+        } catch (e) {
+            console.error('Erro ao salvar dados no localStorage:', e);
+        }
+    } else {
+        // Também salva no localStorage como backup
+        try {
+            localStorage.setItem('clinicPlantData', JSON.stringify(state));
+        } catch (e) {
+            // Ignora erro do localStorage se API funcionou
+        }
     }
-    saveToApi();
 }
 
 async function loadFromStorage() {
@@ -1122,12 +1150,17 @@ async function loadFromStorage() {
 
     document.getElementById('floor-select').value = state.currentFloor;
     const url = state.plantImages[state.currentFloor];
-    if (url) displayPlant(url);
-    else {
+    if (url) {
+        displayPlant(url);
+    } else {
         document.getElementById('upload-section').style.display = 'flex';
         document.getElementById('plant-section').style.display = 'none';
     }
     updateAreasList();
+    // Garantir que o overlay seja atualizado mesmo se não houver imagem
+    setTimeout(() => {
+        updateAreasOverlay();
+    }, 100);
 }
 
 // ---------- Imagem por área ----------
