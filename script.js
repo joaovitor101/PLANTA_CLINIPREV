@@ -11,6 +11,9 @@ let state = {
     draggingIcon: null
 };
 
+// Endpoint da API: mesma origem do front (server.js serve estático + API)
+const API_URL = window.location.origin || 'http://localhost:3001';
+
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('file-input').addEventListener('change', handleFileUpload);
     document.getElementById('floor-select').addEventListener('change', handleFloorChange);
@@ -18,6 +21,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('upload-btn').addEventListener('click', () => document.getElementById('file-input').click());
     document.getElementById('reset-btn').addEventListener('click', resetPlant);
     document.getElementById('close-sidebar').addEventListener('click', closeSidebar);
+    document.getElementById('export-btn').addEventListener('click', exportData);
+    document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file-input').click());
     
     const uploadBox = document.querySelector('.upload-box');
     uploadBox.addEventListener('dragover', (e) => { e.preventDefault(); e.currentTarget.style.borderColor = 'var(--primary-color)'; });
@@ -175,6 +180,74 @@ document.addEventListener('DOMContentLoaded', () => {
     
     loadFromStorage();
 });
+
+// Exportar/Importar dados
+function exportData() {
+    const dataStr = JSON.stringify(state, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'planta-clinica-dados.json';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    let importInput = document.getElementById('import-file-input');
+    if (!importInput) {
+        importInput = document.createElement('input');
+        importInput.type = 'file';
+        importInput.accept = 'application/json';
+        importInput.id = 'import-file-input';
+        importInput.style.display = 'none';
+        document.body.appendChild(importInput);
+    }
+    importInput.addEventListener('change', importData);
+});
+
+function importData(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+        try {
+            const imported = JSON.parse(evt.target.result);
+            if (!imported || !imported.areas || !imported.plantImages) {
+                alert('Arquivo inválido.');
+                return;
+            }
+            state = {
+                currentFloor: imported.currentFloor || 1,
+                areas: imported.areas || { 1: [], 2: [] },
+                plantImages: imported.plantImages || { 1: null, 2: null },
+                currentAreaId: null,
+                isDrawing: false,
+                drawingStart: null,
+                tempAreaCoords: null,
+                currentEquipmentType: null,
+                editingEquipmentId: null,
+                draggingIcon: null
+            };
+            document.getElementById('floor-select').value = state.currentFloor;
+            const imageUrl = state.plantImages[state.currentFloor];
+            if (imageUrl) {
+                displayPlant(imageUrl);
+            } else {
+                document.getElementById('upload-section').style.display = 'flex';
+                document.getElementById('plant-section').style.display = 'none';
+            }
+            updateAreasList();
+            saveToStorage();
+            alert('Dados importados com sucesso.');
+        } catch (err) {
+            alert('Erro ao importar dados: ' + err.message);
+        } finally {
+            e.target.value = '';
+        }
+    };
+    reader.readAsText(file);
+}
 
 function handleFileUpload(e) {
     const file = e.target.files[0];
@@ -482,228 +555,57 @@ function updateAreasOverlay() {
         label.setAttribute('class', 'area-label');
         label.textContent = area.name;
         overlay.appendChild(label);
+
+        // Botão único "+" para abrir todas as informações da área
+        const plusSize = 150; // tamanho REAL do ícone
+        const offset = 6;    // desce um pouco para ficar dentro do card
         
-        // Adicionar ícones de equipamentos
-        const iconSize = 100;
+        const plusGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        plusGroup.setAttribute('class', 'equipment-icon');
+        plusGroup.style.cursor = 'pointer';
+        plusGroup.style.pointerEvents = 'all';
         
-        // Ícones de notebooks (computador)
-        area.notebooks.forEach((notebook, idx) => {
-            // Usar posição salva ou posição padrão
-            const iconX = notebook.iconX !== undefined ? notebook.iconX : area.coords.x + 20;
-            const iconY = notebook.iconY !== undefined ? notebook.iconY : area.coords.y + 80;
-            
-            const iconGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-            iconGroup.setAttribute('class', 'equipment-icon');
-            iconGroup.setAttribute('data-type', 'notebook');
-            iconGroup.setAttribute('data-area-id', area.id);
-            iconGroup.setAttribute('data-index', idx);
-            iconGroup.style.cursor = 'move';
-            iconGroup.style.pointerEvents = 'all';
-            iconGroup.setAttribute('transform', `translate(${iconX}, ${iconY})`);
-            
-            // Ícone de notebook/laptop - tela
-            const screenHeight = iconSize * 0.5;
-            const baseHeight = iconSize * 0.3;
-            
-            // Tela do notebook
-            const screen = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            screen.setAttribute('x', 0);
-            screen.setAttribute('y', 0);
-            screen.setAttribute('width', iconSize);
-            screen.setAttribute('height', screenHeight);
-            screen.setAttribute('rx', '3');
-            screen.setAttribute('fill', '#2563eb');
-            screen.setAttribute('stroke', '#1e40af');
-            screen.setAttribute('stroke-width', '2');
-            
-            // Área interna da tela
-            const screenInner = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            screenInner.setAttribute('x', 4);
-            screenInner.setAttribute('y', 4);
-            screenInner.setAttribute('width', iconSize - 8);
-            screenInner.setAttribute('height', screenHeight - 8);
-            screenInner.setAttribute('rx', '2');
-            screenInner.setAttribute('fill', '#60a5fa');
-            
-            // Base/teclado do notebook
-            const base = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            base.setAttribute('x', 0);
-            base.setAttribute('y', screenHeight - 2);
-            base.setAttribute('width', iconSize);
-            base.setAttribute('height', baseHeight);
-            base.setAttribute('rx', '3');
-            base.setAttribute('fill', '#1e40af');
-            base.setAttribute('stroke', '#1e3a8a');
-            base.setAttribute('stroke-width', '2');
-            
-            // Linha divisória entre tela e base
-            const divider = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-            divider.setAttribute('x1', 0);
-            divider.setAttribute('y1', screenHeight - 2);
-            divider.setAttribute('x2', iconSize);
-            divider.setAttribute('y2', screenHeight - 2);
-            divider.setAttribute('stroke', '#1e3a8a');
-            divider.setAttribute('stroke-width', '2');
-            
-            // Teclas (pequenos retângulos)
-            const keyWidth = iconSize / 8;
-            const keyHeight = baseHeight / 3;
-            const keySpacing = keyWidth * 0.2;
-            for (let i = 0; i < 6; i++) {
-                const key = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                key.setAttribute('x', (iconSize / 8) + i * (keyWidth + keySpacing));
-                key.setAttribute('y', screenHeight + (baseHeight / 3));
-                key.setAttribute('width', keyWidth);
-                key.setAttribute('height', keyHeight);
-                key.setAttribute('rx', '1');
-                key.setAttribute('fill', '#3b82f6');
-                iconGroup.appendChild(key);
-            }
-            
-            iconGroup.appendChild(screen);
-            iconGroup.appendChild(screenInner);
-            iconGroup.appendChild(base);
-            iconGroup.appendChild(divider);
-            overlay.appendChild(iconGroup);
-            
-            // Drag and drop
-            let iconPos = { x: iconX, y: iconY };
-            let dragStartPos = null;
-            
-            iconGroup.addEventListener('mousedown', (e) => {
-                e.stopPropagation();
-                dragStartPos = { x: e.clientX, y: e.clientY };
-                const svgPoint = overlay.createSVGPoint();
-                svgPoint.x = e.clientX;
-                svgPoint.y = e.clientY;
-                const ctm = overlay.getScreenCTM();
-                if (ctm) {
-                    const svgCoords = svgPoint.matrixTransform(ctm.inverse());
-                    window.globalDragState.isDragging = true;
-                    window.globalDragState.iconGroup = iconGroup;
-                    window.globalDragState.dragStart = { x: svgCoords.x - iconPos.x, y: svgCoords.y - iconPos.y };
-                    window.globalDragState.iconPos = { x: iconPos.x, y: iconPos.y };
-                    window.globalDragState.area = area;
-                    window.globalDragState.equipment = notebook;
-                    window.globalDragState.equipment.type = 'notebook';
-                    window.globalDragState.iconSize = iconSize;
-                }
-            });
-            
-            iconGroup.addEventListener('mouseup', () => {
-                if (window.globalDragState.isDragging && window.globalDragState.iconGroup === iconGroup) {
-                    iconPos = { ...window.globalDragState.iconPos };
-                }
-            });
-            
-            iconGroup.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (dragStartPos) {
-                    const dragDistance = Math.sqrt(
-                        Math.pow(e.clientX - dragStartPos.x, 2) + 
-                        Math.pow(e.clientY - dragStartPos.y, 2)
-                    );
-                    if (dragDistance < 5) { // Se moveu menos de 5px, é um clique
-                        const rect = iconGroup.getBoundingClientRect();
-                        showEquipmentDetails(notebook, 'notebook', area.name, rect.left + rect.width / 2, rect.top);
-                    }
-                }
-                dragStartPos = null;
-            });
-        });
+        const centerX = area.coords.x + area.coords.width / 2 - plusSize / 2;
+        const topY = area.coords.y - plusSize / 2 + offset;
         
-        // Ícones de impressoras
-        area.printers.forEach((printer, idx) => {
-            // Usar posição salva ou posição padrão
-            const iconX = printer.iconX !== undefined ? printer.iconX : area.coords.x + 20;
-            const iconY = printer.iconY !== undefined ? printer.iconY : area.coords.y + 80;
-            
-            const iconGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-            iconGroup.setAttribute('class', 'equipment-icon');
-            iconGroup.setAttribute('data-type', 'printer');
-            iconGroup.setAttribute('data-area-id', area.id);
-            iconGroup.setAttribute('data-index', idx);
-            iconGroup.style.cursor = 'move';
-            iconGroup.style.pointerEvents = 'all';
-            iconGroup.setAttribute('transform', `translate(${iconX}, ${iconY})`);
-            
-            // Ícone de impressora
-            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            rect.setAttribute('x', 0);
-            rect.setAttribute('y', 0);
-            rect.setAttribute('width', iconSize);
-            rect.setAttribute('height', iconSize * 0.8);
-            rect.setAttribute('rx', '4');
-            rect.setAttribute('fill', '#10b981');
-            rect.setAttribute('stroke', '#059669');
-            rect.setAttribute('stroke-width', '2');
-            
-            const top = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            top.setAttribute('x', 0);
-            top.setAttribute('y', 0);
-            top.setAttribute('width', iconSize);
-            top.setAttribute('height', iconSize * 0.3);
-            top.setAttribute('rx', '4');
-            top.setAttribute('fill', '#34d399');
-            
-            const paper = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            paper.setAttribute('x', iconSize * 0.25);
-            paper.setAttribute('y', iconSize * 0.35);
-            paper.setAttribute('width', iconSize * 0.5);
-            paper.setAttribute('height', iconSize * 0.45);
-            paper.setAttribute('fill', '#ffffff');
-            paper.setAttribute('stroke', '#d1d5db');
-            paper.setAttribute('stroke-width', '1');
-            
-            iconGroup.appendChild(rect);
-            iconGroup.appendChild(top);
-            iconGroup.appendChild(paper);
-            overlay.appendChild(iconGroup);
-            
-            // Drag and drop
-            let iconPos = { x: iconX, y: iconY };
-            let dragStartPos = null;
-            
-            iconGroup.addEventListener('mousedown', (e) => {
-                e.stopPropagation();
-                dragStartPos = { x: e.clientX, y: e.clientY };
-                const svgPoint = overlay.createSVGPoint();
-                svgPoint.x = e.clientX;
-                svgPoint.y = e.clientY;
-                const ctm = overlay.getScreenCTM();
-                if (ctm) {
-                    const svgCoords = svgPoint.matrixTransform(ctm.inverse());
-                    window.globalDragState.isDragging = true;
-                    window.globalDragState.iconGroup = iconGroup;
-                    window.globalDragState.dragStart = { x: svgCoords.x - iconPos.x, y: svgCoords.y - iconPos.y };
-                    window.globalDragState.iconPos = { x: iconPos.x, y: iconPos.y };
-                    window.globalDragState.area = area;
-                    window.globalDragState.equipment = printer;
-                    window.globalDragState.equipment.type = 'printer';
-                    window.globalDragState.iconSize = iconSize;
-                }
-            });
-            
-            iconGroup.addEventListener('mouseup', () => {
-                if (window.globalDragState.isDragging && window.globalDragState.iconGroup === iconGroup) {
-                    iconPos = { ...window.globalDragState.iconPos };
-                }
-            });
-            
-            iconGroup.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (dragStartPos) {
-                    const dragDistance = Math.sqrt(
-                        Math.pow(e.clientX - dragStartPos.x, 2) + 
-                        Math.pow(e.clientY - dragStartPos.y, 2)
-                    );
-                    if (dragDistance < 5) { // Se moveu menos de 5px, é um clique
-                        const rect = iconGroup.getBoundingClientRect();
-                        showEquipmentDetails(printer, 'printer', area.name, rect.left + rect.width / 2, rect.top);
-                    }
-                }
-                dragStartPos = null;
-            });
+        plusGroup.setAttribute('transform', `translate(${centerX}, ${topY + 120})`);
+        
+        
+        
+        const plusBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        plusBg.setAttribute('x', 0);
+        plusBg.setAttribute('y', 0);
+        plusBg.setAttribute('width', plusSize);
+        plusBg.setAttribute('height', plusSize);
+        plusBg.setAttribute('rx', 16);
+        plusBg.setAttribute('fill', '#0ea5e9');
+        plusBg.setAttribute('stroke', '#0284c7');
+        plusBg.setAttribute('stroke-width', '4');
+
+        const plusVertical = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        plusVertical.setAttribute('x', plusSize * 0.45);
+        plusVertical.setAttribute('y', plusSize * 0.18);
+        plusVertical.setAttribute('width', plusSize * 0.1);
+        plusVertical.setAttribute('height', plusSize * 0.64);
+        plusVertical.setAttribute('rx', 6);
+        plusVertical.setAttribute('fill', '#ffffff');
+
+        const plusHorizontal = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        plusHorizontal.setAttribute('x', plusSize * 0.18);
+        plusHorizontal.setAttribute('y', plusSize * 0.45);
+        plusHorizontal.setAttribute('width', plusSize * 0.64);
+        plusHorizontal.setAttribute('height', plusSize * 0.1);
+        plusHorizontal.setAttribute('rx', 6);
+        plusHorizontal.setAttribute('fill', '#ffffff');
+
+        plusGroup.appendChild(plusBg);
+        plusGroup.appendChild(plusVertical);
+        plusGroup.appendChild(plusHorizontal);
+        overlay.appendChild(plusGroup);
+
+        plusGroup.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openAreaInfoModal(area.id);
         });
     });
     
@@ -744,6 +646,16 @@ function showAreaDetails(areaId) {
     areaDetails.style.visibility = 'visible';
     
     document.getElementById('area-name').textContent = area.name;
+
+    // Preview da imagem da área (apenas na sidebar, não na planta)
+    const imgPrev = document.getElementById('area-image-preview');
+    if (imgPrev) {
+        if (area.image) {
+            imgPrev.innerHTML = `<img src="${area.image}" alt="Imagem da área" style="max-width:100%; max-height:150px; display:block; border:1px solid var(--border-color); border-radius:8px; margin-bottom:0.5rem;">`;
+        } else {
+            imgPrev.textContent = 'Nenhuma imagem enviada';
+        }
+    }
     
     const nbList = document.getElementById('notebooks-list');
     nbList.innerHTML = '';
@@ -1006,12 +918,24 @@ function showEquipmentDetails(equipment, type, areaName, iconX, iconY) {
     
     body.innerHTML = html;
     
-    // Posicionar modal em cima do ícone
+    // Posicionar modal próximo ao ícone, sem cortar conteúdo
     if (iconX !== undefined && iconY !== undefined) {
-        modalContent.style.position = 'absolute';
-        modalContent.style.left = `${iconX}px`;
-        modalContent.style.top = `${iconY - 20}px`;
-        modalContent.style.transform = 'translate(-50%, -100%)';
+        const modalWidth = 280; // mesmo limite definido no CSS para o modal de visualização
+        const modalHeightGuess = 260; // estimativa para evitar corte acima
+        const margin = 12;
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+
+        const left = Math.min(
+            viewportWidth - modalWidth / 2 - margin,
+            Math.max(modalWidth / 2 + margin, iconX)
+        );
+        const top = Math.max(margin, iconY - modalHeightGuess);
+
+        modalContent.style.position = 'fixed';
+        modalContent.style.left = `${left}px`;
+        modalContent.style.top = `${top}px`;
+        modalContent.style.transform = 'translate(-50%, 0)';
         modalContent.style.margin = '0';
     } else {
         modalContent.style.position = '';
@@ -1028,10 +952,134 @@ function closeEquipmentViewModal() {
     document.getElementById('equipment-view-modal').classList.remove('active');
 }
 
+function openAreaInfoModal(areaId) {
+    const area = state.areas[state.currentFloor].find(a => a.id === areaId);
+    if (!area) return;
+
+    const modal = document.getElementById('area-info-modal');
+    const title = document.getElementById('area-info-title');
+    const body = document.getElementById('area-info-body');
+
+    title.textContent = `Informações da Área: ${area.name}`;
+
+    const statusLabel = (s) => s === 'ativo' ? 'Ativo' : s === 'inativo' ? 'Inativo' : 'Em Manutenção';
+
+    const notebookList = area.notebooks.length === 0
+        ? '<p style="color: var(--text-secondary);">Nenhum notebook cadastrado</p>'
+        : area.notebooks.map(n => `
+            <div class="area-info-item" style="border: 1px solid #000; padding: 0.75rem; border-radius: 8px; margin-bottom: 0.5rem;">
+                <div class="area-info-title" style="font-weight: 600;">${n.name || 'Sem nome'}</div>
+                <div class="area-info-meta" style="margin-top: 0.35rem; line-height: 1.4;">
+                    ${n.anydesk ? `<div>Anydesk: ${n.anydesk}</div>` : ''}
+                    ${n.kaspersky ? `<div>Kaspersky: ${n.kaspersky}</div>` : ''}
+                    ${n.status ? `<div>Status: ${statusLabel(n.status)}</div>` : ''}
+                    ${n.storage ? `<div>Armazenamento: ${n.storage}</div>` : ''}
+                </div>
+            </div>
+        `).join('');
+
+    const printerList = area.printers.length === 0
+        ? '<p style="color: var(--text-secondary);">Nenhuma impressora cadastrada</p>'
+        : area.printers.map(p => `
+            <div class="area-info-item">
+                <div class="area-info-title">${p.model || 'Sem modelo'}</div>
+
+            </div>
+        `).join('');
+
+    const imageSection = area.image
+        ? `<div style="margin-top: 0.5rem; display:flex; justify-content:center;">
+                <img src="${area.image}" alt="Imagem da área" style="max-width: 100%; max-height: 60vh; border-radius: 8px; box-shadow: var(--shadow-lg);">
+           </div>`
+        : '<p style="color: var(--text-secondary); margin-top: 0.5rem;">Nenhuma imagem enviada</p>';
+
+    body.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:1rem;">
+            <div>
+                <div class="area-info-title" style="font-size:1.1rem;">${area.name}</div>
+              
+            </div>
+            <div>
+                <h3 style="margin:0 0 0.5rem 0;">Notebooks</h3>
+                ${notebookList}
+            </div>
+            <div>
+                <h3 style="margin:0 0 0.5rem 0;">Impressoras</h3>
+                ${printerList}
+            </div>
+            <div>
+                <h3 style="margin:0 0 0.5rem 0;">Imagem da área</h3>
+                ${imageSection}
+            </div>
+        </div>
+    `;
+
+    modal.classList.add('active');
+}
+
+function closeAreaInfoModal() {
+    document.getElementById('area-info-modal').classList.remove('active');
+}
+
+function showAreaImageModal(imageData, areaName, iconX, iconY) {
+    const modal = document.getElementById('area-image-modal');
+    const modalContent = modal.querySelector('.modal-content');
+    const title = document.getElementById('area-image-title');
+    const body = document.getElementById('area-image-body');
+
+    title.textContent = `Imagem da Área: ${areaName}`;
+    body.innerHTML = `<img src="${imageData}" alt="Imagem da área" style="max-width: 90vw; max-height: 80vh; border-radius: 8px; box-shadow: var(--shadow-lg);">`;
+
+    if (iconX !== undefined && iconY !== undefined) {
+        const modalWidth = 320;
+        const margin = 12;
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+        const left = Math.min(
+            viewportWidth - modalWidth / 2 - margin,
+            Math.max(modalWidth / 2 + margin, iconX)
+        );
+        modalContent.style.position = 'fixed';
+        modalContent.style.left = `${left}px`;
+        modalContent.style.top = `${iconY + 16}px`;
+        modalContent.style.transform = 'translate(-50%, 0)';
+        modalContent.style.margin = '0';
+    } else {
+        modalContent.style.position = '';
+        modalContent.style.left = '';
+        modalContent.style.top = '';
+        modalContent.style.transform = '';
+        modalContent.style.margin = '';
+    }
+
+    modal.classList.add('active');
+}
+
+function closeAreaImageModal() {
+    document.getElementById('area-image-modal').classList.remove('active');
+}
+
 window.addEquipment = addEquipment;
 window.deleteArea = deleteArea;
 window.resetPlant = resetPlant;
 window.closeEquipmentViewModal = closeEquipmentViewModal;
+window.triggerAreaImageUpload = triggerAreaImageUpload;
+window.removeAreaImage = removeAreaImage;
+window.closeAreaImageModal = closeAreaImageModal;
+window.openAreaInfoModal = openAreaInfoModal;
+window.closeAreaInfoModal = closeAreaInfoModal;
+
+// Persistência local + API
+async function saveToApi() {
+    try {
+        await fetch(`${API_URL}/data`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(state)
+        });
+    } catch (err) {
+        console.warn('Falha ao salvar na API, mantendo apenas localStorage:', err.message);
+    }
+}
 
 function saveToStorage() {
     try {
@@ -1039,23 +1087,81 @@ function saveToStorage() {
     } catch (e) {
         console.error('Erro ao salvar dados:', e);
     }
+    saveToApi();
 }
 
-function loadFromStorage() {
+async function loadFromStorage() {
+    let loaded = false;
+    // Tenta API primeiro
     try {
-        const saved = localStorage.getItem('clinicPlantData');
-        if (saved) {
-            const parsed = JSON.parse(saved);
-            state.areas = parsed.areas || state.areas;
-            state.plantImages = parsed.plantImages || state.plantImages;
-            state.currentFloor = parsed.currentFloor || 1;
-            document.getElementById('floor-select').value = state.currentFloor;
-            const url = state.plantImages[state.currentFloor];
-            if (url) displayPlant(url);
-            updateAreasList();
+        const res = await fetch(`${API_URL}/data`);
+        if (res.ok) {
+            const data = await res.json();
+            state.areas = data.areas || state.areas;
+            state.plantImages = data.plantImages || state.plantImages;
+            state.currentFloor = data.currentFloor || 1;
+            loaded = true;
         }
-    } catch (e) {
-        console.error('Erro ao carregar dados:', e);
+    } catch (err) {
+        console.warn('Falha ao carregar da API, tentando localStorage:', err.message);
+    }
+
+    if (!loaded) {
+        try {
+            const saved = localStorage.getItem('clinicPlantData');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                state.areas = parsed.areas || state.areas;
+                state.plantImages = parsed.plantImages || state.plantImages;
+                state.currentFloor = parsed.currentFloor || 1;
+            }
+        } catch (e) {
+            console.error('Erro ao carregar dados do localStorage:', e);
+        }
+    }
+
+    document.getElementById('floor-select').value = state.currentFloor;
+    const url = state.plantImages[state.currentFloor];
+    if (url) displayPlant(url);
+    else {
+        document.getElementById('upload-section').style.display = 'flex';
+        document.getElementById('plant-section').style.display = 'none';
+    }
+    updateAreasList();
+}
+
+// ---------- Imagem por área ----------
+function triggerAreaImageUpload() {
+    if (!state.currentAreaId) return;
+    const input = document.getElementById('area-image-input');
+    if (input) input.click();
+}
+
+// Ler imagem ao selecionar arquivo
+document.getElementById('area-image-input')?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        const area = state.areas[state.currentFloor].find(a => a.id === state.currentAreaId);
+        if (area) {
+            area.image = ev.target.result; // base64
+            updateAreasOverlay();
+            showAreaDetails(area.id);
+            saveToStorage();
+        }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+});
+
+function removeAreaImage() {
+    if (!state.currentAreaId) return;
+    const area = state.areas[state.currentFloor].find(a => a.id === state.currentAreaId);
+    if (area && area.image) {
+        area.image = null;
+        updateAreasOverlay();
+        showAreaDetails(area.id);
+        saveToStorage();
     }
 }
-

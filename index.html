@@ -20,6 +20,8 @@
                 <button id="add-area-btn" class="btn btn-primary">+ Adicionar Área</button>
                 <button id="upload-btn" class="btn btn-secondary">📤 Upload Planta</button>
                 <button id="reset-btn" class="btn btn-danger">🔄 Resetar</button>
+                <button id="export-btn" class="btn btn-secondary">⬇️ Exportar Dados</button>
+                <button id="import-btn" class="btn btn-secondary">⬆️ Importar Dados</button>
             </div>
         </header>
 
@@ -71,6 +73,15 @@
                             <h4>🖨️ Impressoras</h4>
                             <div id="printers-list" class="equipment-list"></div>
                             <button class="btn btn-small" onclick="addEquipment('printer')">+ Adicionar Impressora</button>
+                        </div>
+                        <div class="equipment-section">
+                            <h4>🖼️ Imagem da Área</h4>
+                            <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem;">
+                                <button class="btn btn-small" onclick="triggerAreaImageUpload()">+ Enviar Imagem</button>
+                                <button class="btn btn-small btn-secondary" onclick="removeAreaImage()">Remover</button>
+                            </div>
+                            <input type="file" id="area-image-input" accept="image/*" style="display:none">
+                            <div id="area-image-preview" style="font-size: 0.9rem; color: var(--text-secondary);"></div>
                         </div>
                         <div class="area-actions">
                             <button class="btn btn-danger" onclick="deleteArea()">🗑️ Excluir Área</button>
@@ -162,7 +173,7 @@
                 <!-- Campo para Impressora -->
                 <div id="printer-fields" style="display: none;">
                     <div class="form-group">
-                        <label for="equipment-model-input">Modelo:</label>
+                        <label for="equipment-model-input">Modelo - IP</label>
                         <input type="text" id="equipment-model-input" placeholder="Ex: HP LaserJet Pro M404dn">
                     </div>
                 </div>
@@ -188,6 +199,32 @@
             <div class="modal-actions" style="justify-content: center;">
                 <button class="btn btn-secondary" onclick="closeEquipmentViewModal()">Fechar</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal para visualizar imagem da área -->
+    <div id="area-image-modal" class="modal">
+        <div class="modal-content area-image-modal-content">
+            <div class="modal-header">
+                <h2 id="area-image-title">Imagem da Área</h2>
+                <button class="close-btn" onclick="closeAreaImageModal()">×</button>
+            </div>
+            <div class="modal-body" id="area-image-body" style="display: flex; justify-content: center;">
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para visualizar todas as informações da área -->
+    <div id="area-info-modal" class="modal">
+        <div class="modal-content area-info-modal-content">
+            <div class="modal-header">
+                <h2 id="area-info-title">Informações da Área</h2>
+                <button class="close-btn" onclick="closeAreaInfoModal()">×</button>
+            </div>
+            <div class="modal-body" id="area-info-body">
+                <!-- Conteúdo preenchido via script -->
+            </div>
+
         </div>
     </div>
 

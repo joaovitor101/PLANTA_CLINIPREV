@@ -2,6 +2,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+
 }
 
 :root {
@@ -515,8 +516,8 @@ body {
     height: 100%;
     background: rgba(0, 0, 0, 0.2);
     z-index: 2000;
-    align-items: flex-start;
-    justify-content: flex-end;
+    align-items: center;
+    justify-content: center;
     padding: 1rem;
     animation: fadeIn 0.2s ease-in;
     pointer-events: none;
@@ -530,7 +531,7 @@ body {
     pointer-events: all;
     position: relative;
     z-index: 2001;
-    max-width: 400px;
+    max-width: 1000px;
     margin-top: 1rem;
     margin-right: 1rem;
 }
@@ -564,12 +565,18 @@ body {
 .modal-content {
     background: var(--card-bg);
     border-radius: 1rem;
-    width: 100%;
-    max-width: 400px;
-    max-height: 90vh;
+    width: min(99vw, 1600px);
+    max-width: 1600px;
+    max-height: 96vh;
     overflow-y: auto;
+    overflow-x: hidden;
     box-shadow: var(--shadow-lg);
-    animation: slideInRight 0.3s ease-out;
+    animation: none;
+}
+
+.area-info-modal-content {
+    max-width: 1900px;
+    width: min(99vw, 1600px);    overflow-y: hidden;
 }
 
 .modal-header {

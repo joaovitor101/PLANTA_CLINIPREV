@@ -1,0 +1,15 @@
+{
+  "name": "planta-clinica",
+  "version": "1.0.0",
+  "description": "API básica para persistência de dados da planta",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2"
+  }
+}
+
