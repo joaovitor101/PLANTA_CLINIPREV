@@ -32,8 +32,14 @@ app.get('/data', (req, res) => {
   try {
     ensureDataFile();
     const content = fs.readFileSync(DATA_FILE, 'utf-8');
-    res.json(JSON.parse(content));
+    const data = JSON.parse(content);
+    console.log('GET /data - Dados carregados:', {
+      areasCount: Object.keys(data.areas || {}).reduce((sum, floor) => sum + (data.areas[floor]?.length || 0), 0),
+      hasImages: !!data.plantImages?.[1] || !!data.plantImages?.[2]
+    });
+    res.json(data);
   } catch (err) {
+    console.error('Erro ao ler dados:', err);
     res.status(500).json({ error: 'Erro ao ler dados', details: err.message });
   }
 });
@@ -45,13 +51,24 @@ app.post('/data', (req, res) => {
       return res.status(400).json({ error: 'Payload inválido' });
     }
     fs.writeFileSync(DATA_FILE, JSON.stringify(body, null, 2));
+    console.log('POST /data - Dados salvos:', {
+      areasCount: Object.keys(body.areas || {}).reduce((sum, floor) => sum + (body.areas[floor]?.length || 0), 0),
+      hasImages: !!body.plantImages?.[1] || !!body.plantImages?.[2]
+    });
     res.json({ ok: true });
   } catch (err) {
+    console.error('Erro ao salvar dados:', err);
     res.status(500).json({ error: 'Erro ao salvar dados', details: err.message });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`API rodando em http://localhost:${PORT}`);
-});
+// Exportar para Vercel (serverless)
+module.exports = app;
+
+// Para desenvolvimento local
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`API rodando em http://localhost:${PORT}`);
+  });
+}
 

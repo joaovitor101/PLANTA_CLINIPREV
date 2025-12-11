@@ -1122,13 +1122,22 @@ async function loadFromStorage() {
     let loaded = false;
     // Tenta API primeiro
     try {
+        console.log('Tentando carregar dados da API:', `${API_URL}/data`);
         const res = await fetch(`${API_URL}/data`);
+        console.log('Resposta da API:', res.status, res.statusText);
         if (res.ok) {
             const data = await res.json();
+            console.log('Dados carregados da API:', {
+                areas: Object.keys(data.areas || {}).reduce((sum, floor) => sum + (data.areas[floor]?.length || 0), 0),
+                hasImage1: !!data.plantImages?.[1],
+                hasImage2: !!data.plantImages?.[2]
+            });
             state.areas = data.areas || state.areas;
             state.plantImages = data.plantImages || state.plantImages;
             state.currentFloor = data.currentFloor || 1;
             loaded = true;
+        } else {
+            console.warn('API retornou erro:', res.status, res.statusText);
         }
     } catch (err) {
         console.warn('Falha ao carregar da API, tentando localStorage:', err.message);
