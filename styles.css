@@ -571,6 +571,7 @@ body {
     overflow-x: hidden;
     box-shadow: var(--shadow-lg);
     animation: none;
+    overflow-y: hidden;
 }
 
 .area-info-modal-content {
