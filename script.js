@@ -23,8 +23,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('upload-btn').addEventListener('click', () => document.getElementById('file-input').click());
     document.getElementById('reset-btn').addEventListener('click', resetPlant);
     document.getElementById('close-sidebar').addEventListener('click', closeSidebar);
-    document.getElementById('export-btn').addEventListener('click', exportData);
-    document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file-input').click());
     
     const uploadBox = document.querySelector('.upload-box');
     uploadBox.addEventListener('dragover', (e) => { e.preventDefault(); e.currentTarget.style.borderColor = 'var(--primary-color)'; });
@@ -189,8 +187,25 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(() => {
             const img = document.getElementById('plant-image');
-            if (img && img.complete && img.naturalWidth > 0) {
-                updateAreasOverlay();
+            if (img && img.complete && img.naturalWidth > 0 && img.src) {
+                // Recalcular dimensões da imagem e atualizar overlay
+                const isMobile = window.innerWidth <= 768;
+                const headerHeight = isMobile ? 120 : 100;
+                const sidebarWidth = isMobile ? 0 : (window.innerWidth <= 1024 ? 320 : 350);
+                const padding = isMobile ? 20 : 40;
+                
+                const maxH = window.innerHeight - headerHeight - padding;
+                const maxW = window.innerWidth - (isMobile ? padding * 2 : sidebarWidth + padding * 2);
+                
+                let w = img.naturalWidth, h = img.naturalHeight;
+                if (h > maxH) { w = w * (maxH / h); h = maxH; }
+                if (w > maxW) { h = h * (maxW / w); w = maxW; }
+                img.style.width = w + 'px';
+                img.style.height = h + 'px';
+                
+                requestAnimationFrame(() => {
+                    updateAreasOverlay();
+                });
             }
         }, 150);
     });
@@ -212,73 +227,6 @@ async function checkApiConnection() {
     }
 }
 
-// Exportar/Importar dados
-function exportData() {
-    const dataStr = JSON.stringify(state, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'planta-clinica-dados.json';
-    a.click();
-    URL.revokeObjectURL(url);
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    let importInput = document.getElementById('import-file-input');
-    if (!importInput) {
-        importInput = document.createElement('input');
-        importInput.type = 'file';
-        importInput.accept = 'application/json';
-        importInput.id = 'import-file-input';
-        importInput.style.display = 'none';
-        document.body.appendChild(importInput);
-    }
-    importInput.addEventListener('change', importData);
-});
-
-function importData(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-        try {
-            const imported = JSON.parse(evt.target.result);
-            if (!imported || !imported.areas || !imported.plantImages) {
-                alert('Arquivo inválido.');
-                return;
-            }
-            state = {
-                currentFloor: imported.currentFloor || 1,
-                areas: imported.areas || { 1: [], 2: [] },
-                plantImages: imported.plantImages || { 1: null, 2: null },
-                currentAreaId: null,
-                isDrawing: false,
-                drawingStart: null,
-                tempAreaCoords: null,
-                currentEquipmentType: null,
-                editingEquipmentId: null,
-                draggingIcon: null
-            };
-            document.getElementById('floor-select').value = state.currentFloor;
-            const imageUrl = state.plantImages[state.currentFloor];
-            if (imageUrl) {
-                displayPlant(imageUrl);
-            } else {
-                document.getElementById('upload-section').style.display = 'flex';
-                document.getElementById('plant-section').style.display = 'none';
-            }
-            updateAreasList();
-            saveToStorage();
-            alert('Dados importados com sucesso.');
-        } catch (err) {
-            alert('Erro ao importar dados: ' + err.message);
-        } finally {
-            e.target.value = '';
-        }
-    };
-    reader.readAsText(file);
-}
 
 function handleFileUpload(e) {
     const file = e.target.files[0];
@@ -320,8 +268,15 @@ function displayPlant(imageUrl) {
             return;
         }
         
-        const maxH = window.innerHeight - 250;
-        const maxW = window.innerWidth - 400;
+        // Calcular espaço disponível de forma responsiva
+        const isMobile = window.innerWidth <= 768;
+        const headerHeight = isMobile ? 120 : 100;
+        const sidebarWidth = isMobile ? 0 : (window.innerWidth <= 1024 ? 320 : 350);
+        const padding = isMobile ? 20 : 40;
+        
+        const maxH = window.innerHeight - headerHeight - padding;
+        const maxW = window.innerWidth - (isMobile ? padding * 2 : sidebarWidth + padding * 2);
+        
         let w = img.naturalWidth, h = img.naturalHeight;
         if (h > maxH) { w = w * (maxH / h); h = maxH; }
         if (w > maxW) { h = h * (maxW / w); w = maxW; }
