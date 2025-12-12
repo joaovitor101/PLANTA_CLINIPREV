@@ -328,17 +328,24 @@ function displayPlant(imageUrl) {
         img.style.width = w + 'px';
         img.style.height = h + 'px';
         
-        // Aguardar um frame para garantir que o DOM foi atualizado
+        // Aguardar múltiplos frames para garantir que o DOM foi completamente atualizado
         requestAnimationFrame(() => {
-            updateAreasOverlay();
+            requestAnimationFrame(() => {
+                // Aguardar um pequeno delay adicional para garantir renderização completa
+                setTimeout(() => {
+                    updateAreasOverlay();
+                }, 10);
+            });
         });
     };
     
-    // Se a imagem já está carregada, atualiza imediatamente
+    // Se a imagem já está carregada e é a mesma URL, atualiza imediatamente
     if (img.complete && img.naturalWidth > 0 && img.naturalHeight > 0 && img.src === imageUrl) {
         updateDimensions();
     } else {
         // Caso contrário, define o src e espera o onload
+        // Limpar onload anterior para evitar múltiplas chamadas
+        img.onload = null;
         img.src = imageUrl;
         img.onload = updateDimensions;
         img.onerror = () => {
@@ -505,16 +512,33 @@ function updateAreasOverlay() {
     const overlay = document.getElementById('areas-overlay');
     const img = document.getElementById('plant-image');
     
-    // Verificar se a imagem está completamente carregada
+    // Verificar se a imagem está completamente carregada e renderizada
     if (!img || !img.complete || !img.naturalWidth || !img.naturalHeight) {
         if (img && !img.complete) {
+            // Se a imagem ainda está carregando, aguardar
+            const originalOnload = img.onload;
             img.onload = () => {
-                // Aguardar um frame para garantir que o DOM foi atualizado
+                if (originalOnload) originalOnload();
+                // Aguardar múltiplos frames para garantir renderização completa
                 requestAnimationFrame(() => {
-                    updateAreasOverlay();
+                    requestAnimationFrame(() => {
+                        setTimeout(() => {
+                            updateAreasOverlay();
+                        }, 10);
+                    });
                 });
             };
         }
+        return;
+    }
+    
+    // Verificar se a imagem tem dimensões visíveis no DOM
+    const imgRect = img.getBoundingClientRect();
+    if (imgRect.width === 0 || imgRect.height === 0) {
+        // Se a imagem ainda não tem dimensões visíveis, tentar novamente
+        setTimeout(() => {
+            updateAreasOverlay();
+        }, 50);
         return;
     }
     
@@ -1217,9 +1241,12 @@ async function loadFromStorage() {
     document.getElementById('floor-select').value = state.currentFloor;
     const url = state.plantImages[state.currentFloor];
     if (url) {
-        // Aguardar um pouco para garantir que o DOM está pronto
+        // Aguardar que o DOM esteja completamente pronto antes de exibir a planta
+        // Usar múltiplos requestAnimationFrame para garantir renderização completa
         requestAnimationFrame(() => {
-            displayPlant(url);
+            requestAnimationFrame(() => {
+                displayPlant(url);
+            });
         });
     } else {
         document.getElementById('upload-section').style.display = 'flex';
