@@ -751,7 +751,7 @@ function createEquipmentItem(eq, type, idx) {
             const statusText = eq.status === 'ativo' ? 'Ativo' : eq.status === 'inativo' ? 'Inativo' : 'Em Manutenção';
             parts.push(`Status: ${statusText}`);
         }
-        if (eq.storage) parts.push(`Armazenamento: ${eq.storage}`);
+        if (eq.storage) parts.push(`Armazenamento Livre: ${eq.storage}`);
         info.textContent = parts.join(' • ') || 'Sem informações adicionais';
     } else {
         info.textContent = 'Impressora';
@@ -950,7 +950,7 @@ function showEquipmentDetails(equipment, type, areaName, iconX, iconY) {
                 <strong>Status:</strong> ${equipment.status === 'ativo' ? 'Ativo' : equipment.status === 'inativo' ? 'Inativo' : 'Em Manutenção'}
             </div>
             <div class="equipment-detail-item">
-                <strong>Armazenamento:</strong> ${equipment.storage || 'Não informado'}
+                <strong>Armazenamento Livre:</strong> ${equipment.storage || 'Não informado'}
             </div>
         `;
     } else {
@@ -1018,7 +1018,7 @@ function openAreaInfoModal(areaId) {
                     ${n.anydesk ? `<div>Anydesk: ${n.anydesk}</div>` : ''}
                     ${n.kaspersky ? `<div>Kaspersky: ${n.kaspersky}</div>` : ''}
                     ${n.status ? `<div>Status: ${statusLabel(n.status)}</div>` : ''}
-                    ${n.storage ? `<div>Armazenamento: ${n.storage}</div>` : ''}
+                    ${n.storage ? `<div>Armazenamento Livre: ${n.storage}</div>` : ''}
                 </div>
             </div>
         `).join('');
