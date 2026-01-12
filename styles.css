@@ -54,6 +54,28 @@ body {
     white-space: nowrap;
 }
 
+.title-section {
+    display: flex;
+    align-items: center;
+}
+
+.plant-select {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    background: var(--card-bg);
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 300px;
+}
+
+.plant-select:hover {
+    border-color: var(--primary-color);
+}
+
 .controls {
     display: flex;
     gap: 0.5rem;
@@ -287,9 +309,17 @@ body {
     dominant-baseline: middle;
 }
 
+.csc-label {
+    font-size: 120px;
+}
+
 @media (max-width: 1024px) {
     .area-label {
         font-size: 60px;
+    }
+
+    .csc-label {
+        font-size: 80px;
     }
 }
 
@@ -297,11 +327,19 @@ body {
     .area-label {
         font-size: 40px;
     }
+
+    .csc-label {
+        font-size: 50px;
+    }
 }
 
 @media (max-width: 480px) {
     .area-label {
         font-size: 28px;
+    }
+
+    .csc-label {
+        font-size: 35px;
     }
 }
 
@@ -439,14 +477,12 @@ body {
 }
 
 .area-item h3 {
-    font-size: 1rem;
+    font-size: 2rem;
     margin-bottom: 0.25rem;
 }
 
-.area-item .area-type {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    text-transform: capitalize;
+.area-item.csc-area .area-type {
+    font-size: 1.25rem;
 }
 
 .area-details {
@@ -454,7 +490,7 @@ body {
 }
 
 .area-details h3 {
-    font-size: 1.25rem;
+    font-size: 2rem;
     margin-bottom: 1.5rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--border-color);
@@ -465,7 +501,7 @@ body {
 }
 
 .equipment-section h4 {
-    font-size: 1rem;
+    font-size: 2rem;
     margin-bottom: 1rem;
     color: var(--text-primary);
 }
@@ -977,7 +1013,7 @@ body {
     }
 
     .area-item h3 {
-        font-size: 0.95rem;
+        font-size: 1.1rem;
     }
 
     .area-details h3 {

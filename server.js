@@ -16,9 +16,29 @@ function ensureDataFile() {
     fs.writeFileSync(
       DATA_FILE,
       JSON.stringify({
+        currentPlant: 'clinica',
         currentFloor: 1,
-        areas: { 1: [], 2: [] },
-        plantImages: { 1: null, 2: null }
+        plants: {
+          clinica: {
+            name: 'Clínica',
+            floors: [
+              { id: 1, name: '1º Andar' },
+              { id: 2, name: '2º Andar' },
+              { id: 3, name: '3º Andar - Casa de Máquinas' }
+            ],
+            areas: { 1: [], 2: [], 3: [] },
+            plantImages: { 1: null, 2: null, 3: null }
+          },
+          csc: {
+            name: 'CSC - Angelus',
+            floors: [
+              { id: 1, name: '1º Andar' },
+              { id: 2, name: '2º Andar' }
+            ],
+            areas: { 1: [], 2: [] },
+            plantImages: { 1: null, 2: null }
+          }
+        }
       }, null, 2)
     );
   }
@@ -34,8 +54,11 @@ app.get('/data', (req, res) => {
     const content = fs.readFileSync(DATA_FILE, 'utf-8');
     const data = JSON.parse(content);
     console.log('GET /data - Dados carregados:', {
-      areasCount: Object.keys(data.areas || {}).reduce((sum, floor) => sum + (data.areas[floor]?.length || 0), 0),
-      hasImages: !!data.plantImages?.[1] || !!data.plantImages?.[2]
+      currentPlant: data.currentPlant,
+      clinicaAreasCount: Object.keys(data.plants?.clinica?.areas || {}).reduce((sum, floor) => sum + (data.plants?.clinica?.areas[floor]?.length || 0), 0),
+      cscAreasCount: Object.keys(data.plants?.csc?.areas || {}).reduce((sum, floor) => sum + (data.plants?.csc?.areas[floor]?.length || 0), 0),
+      hasClinicaImages: !!data.plants?.clinica?.plantImages?.[1] || !!data.plants?.clinica?.plantImages?.[2] || !!data.plants?.clinica?.plantImages?.[3],
+      hasCscImages: !!data.plants?.csc?.plantImages?.[1] || !!data.plants?.csc?.plantImages?.[2] || !!data.plants?.csc?.plantImages?.[3]
     });
     res.json(data);
   } catch (err) {
@@ -47,13 +70,16 @@ app.get('/data', (req, res) => {
 app.post('/data', (req, res) => {
   try {
     const body = req.body;
-    if (!body || !body.areas || !body.plantImages) {
-      return res.status(400).json({ error: 'Payload inválido' });
+    if (!body || !body.plants) {
+      return res.status(400).json({ error: 'Payload inválido - plantas não encontradas' });
     }
     fs.writeFileSync(DATA_FILE, JSON.stringify(body, null, 2));
     console.log('POST /data - Dados salvos:', {
-      areasCount: Object.keys(body.areas || {}).reduce((sum, floor) => sum + (body.areas[floor]?.length || 0), 0),
-      hasImages: !!body.plantImages?.[1] || !!body.plantImages?.[2]
+      currentPlant: body.currentPlant,
+      clinicaAreasCount: Object.keys(body.plants?.clinica?.areas || {}).reduce((sum, floor) => sum + (body.plants?.clinica?.areas[floor]?.length || 0), 0),
+      cscAreasCount: Object.keys(body.plants?.csc?.areas || {}).reduce((sum, floor) => sum + (body.plants?.csc?.areas[floor]?.length || 0), 0),
+      hasClinicaImages: !!body.plants?.clinica?.plantImages?.[1] || !!body.plants?.clinica?.plantImages?.[2] || !!body.plants?.clinica?.plantImages?.[3],
+      hasCscImages: !!body.plants?.csc?.plantImages?.[1] || !!body.plants?.csc?.plantImages?.[2] || !!body.plants?.csc?.plantImages?.[3]
     });
     res.json({ ok: true });
   } catch (err) {

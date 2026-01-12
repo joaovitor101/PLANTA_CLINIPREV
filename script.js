@@ -1,7 +1,27 @@
 let state = {
+    currentPlant: 'clinica',
     currentFloor: 1,
-    areas: { 1: [], 2: [] },
-    plantImages: { 1: null, 2: null },
+    plants: {
+        clinica: {
+            name: 'Clínica',
+            floors: [
+                { id: 1, name: '1º Andar' },
+                { id: 2, name: '2º Andar' },
+                { id: 3, name: '3º Andar - Casa de Máquinas' }
+            ],
+            areas: { 1: [], 2: [], 3: [] },
+            plantImages: { 1: null, 2: null, 3: null }
+        },
+        csc: {
+            name: 'CSC - Angelus',
+            floors: [
+                { id: 1, name: '1º Andar' },
+                { id: 2, name: '2º Andar' }
+            ],
+            areas: { 1: [], 2: [] },
+            plantImages: { 1: null, 2: null }
+        }
+    },
     currentAreaId: null,
     isDrawing: false,
     drawingStart: null,
@@ -18,11 +38,15 @@ const API_URL = window.location.origin + API_BASE;
 
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('file-input').addEventListener('change', handleFileUpload);
+    document.getElementById('plant-select').addEventListener('change', handlePlantChange);
     document.getElementById('floor-select').addEventListener('change', handleFloorChange);
     document.getElementById('add-area-btn').addEventListener('click', openAreaModal);
     document.getElementById('upload-btn').addEventListener('click', () => document.getElementById('file-input').click());
     document.getElementById('reset-btn').addEventListener('click', resetPlant);
     document.getElementById('close-sidebar').addEventListener('click', closeSidebar);
+    
+    // Inicializar opções de andares
+    updateFloorOptions();
     
     const uploadBox = document.querySelector('.upload-box');
     uploadBox.addEventListener('dragover', (e) => { e.preventDefault(); e.currentTarget.style.borderColor = 'var(--primary-color)'; });
@@ -233,7 +257,7 @@ function handleFileUpload(e) {
     if (file && file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = (event) => {
-            state.plantImages[state.currentFloor] = event.target.result;
+            state.plants[state.currentPlant].plantImages[state.currentFloor] = event.target.result;
             displayPlant(event.target.result);
             saveToStorage();
         };
@@ -247,7 +271,7 @@ function handleDrop(e) {
     if (file && file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = (event) => {
-            state.plantImages[state.currentFloor] = event.target.result;
+            state.plants[state.currentPlant].plantImages[state.currentFloor] = event.target.result;
             displayPlant(event.target.result);
             saveToStorage();
         };
@@ -309,10 +333,94 @@ function displayPlant(imageUrl) {
     }
 }
 
+function handlePlantChange(e) {
+    state.currentPlant = e.target.value;
+    state.currentAreaId = null;
+    
+    // Atualizar opções de andares
+    updateFloorOptions();
+    
+    // Verificar se o andar atual existe na nova planta
+    const currentPlantFloors = state.plants[state.currentPlant].floors;
+    const floorExists = currentPlantFloors.some(floor => floor.id === state.currentFloor);
+    if (!floorExists) {
+        state.currentFloor = currentPlantFloors[0].id;
+        document.getElementById('floor-select').value = state.currentFloor;
+    }
+    
+    const url = state.plants[state.currentPlant].plantImages[state.currentFloor];
+    if (url) displayPlant(url);
+    else {
+        document.getElementById('upload-section').style.display = 'flex';
+        document.getElementById('plant-section').style.display = 'none';
+    }
+    updateAreasList();
+    closeSidebar();
+    saveToStorage();
+}
+
+function updateFloorOptions() {
+    const floorSelect = document.getElementById('floor-select');
+    const floorLabel = document.getElementById('floor-sector-label');
+    const currentPlantFloors = state.plants[state.currentPlant].floors;
+    
+    // Atualizar label baseado na planta
+    floorLabel.textContent = 'Andar:';
+    
+    // Limpar opções existentes
+    floorSelect.innerHTML = '';
+    
+    // Adicionar novas opções
+    currentPlantFloors.forEach(floor => {
+        const option = document.createElement('option');
+        option.value = floor.id;
+        option.textContent = floor.name;
+        floorSelect.appendChild(option);
+    });
+    
+    // Definir o valor atual
+    floorSelect.value = state.currentFloor;
+}
+
+function updateAreaTypeOptions() {
+    const areaTypeSelect = document.getElementById('area-type-input');
+    
+    // Limpar opções existentes
+    areaTypeSelect.innerHTML = '';
+    
+    if (state.currentPlant === 'csc') {
+        // Para CSC, apenas tipo "setor"
+        const option = document.createElement('option');
+        option.value = 'setor';
+        option.textContent = 'Setor';
+        areaTypeSelect.appendChild(option);
+        areaTypeSelect.value = 'setor';
+    } else {
+        // Para Clínica, opções normais
+        const options = [
+            { value: 'recepcao', text: 'Recepção' },
+            { value: 'consultorio', text: 'Consultório' },
+            { value: 'sala', text: 'Sala' },
+            { value: 'banheiro', text: 'Banheiro' },
+            { value: 'corredor', text: 'Corredor' },
+            { value: 'outro', text: 'Outro' }
+        ];
+        
+        options.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt.value;
+            option.textContent = opt.text;
+            areaTypeSelect.appendChild(option);
+        });
+        
+        areaTypeSelect.value = 'consultorio';
+    }
+}
+
 function handleFloorChange(e) {
     state.currentFloor = parseInt(e.target.value);
     state.currentAreaId = null;
-    const url = state.plantImages[state.currentFloor];
+    const url = state.plants[state.currentPlant].plantImages[state.currentFloor];
     if (url) displayPlant(url);
     else {
         document.getElementById('upload-section').style.display = 'flex';
@@ -324,13 +432,12 @@ function handleFloorChange(e) {
 }
 
 function openAreaModal() {
-    if (!state.plantImages[state.currentFloor]) {
+    if (!state.plants[state.currentPlant].plantImages[state.currentFloor]) {
         alert('Por favor, faça upload da planta primeiro!');
         return;
     }
-    document.getElementById('area-modal').classList.add('active');
-    document.getElementById('area-name-input').value = '';
-    document.getElementById('area-type-input').value = 'consultorio';
+    
+    // Não abrir modal ainda, apenas ativar modo de desenho
     state.isDrawing = false;
     state.drawingStart = null;
     state.tempAreaCoords = null;
@@ -417,6 +524,12 @@ function stopDrawing(e) {
         width: w,
         height: h
     };
+    
+    // Abrir modal após desenhar a área
+    document.getElementById('area-modal').classList.add('active');
+    document.getElementById('area-name-input').value = '';
+    updateAreaTypeOptions();
+    
     state.drawingStart = null;
 }
 
@@ -451,7 +564,7 @@ function saveArea() {
         notebooks: [],
         printers: []
     };
-    state.areas[state.currentFloor].push(area);
+    state.plants[state.currentPlant].areas[state.currentFloor].push(area);
     state.tempAreaCoords = null;
     state.isDrawing = false;
     state.drawingStart = null;
@@ -520,7 +633,7 @@ function updateAreasOverlay() {
     overlay.style.top = '0';
     overlay.style.left = '0';
     
-    state.areas[state.currentFloor].forEach(area => {
+    state.plants[state.currentPlant].areas[state.currentFloor].forEach(area => {
         const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
         r.setAttribute('x', area.coords.x);
         r.setAttribute('y', area.coords.y);
@@ -598,7 +711,11 @@ function updateAreasOverlay() {
         const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         label.setAttribute('x', area.coords.x + area.coords.width / 2);
         label.setAttribute('y', area.coords.y + area.coords.height / 2);
-        label.setAttribute('class', 'area-label');
+        let labelClass = 'area-label';
+        if (state.currentPlant === 'csc') {
+            labelClass += ' csc-label';
+        }
+        label.setAttribute('class', labelClass);
         label.textContent = area.name;
         overlay.appendChild(label);
 
@@ -675,7 +792,7 @@ function selectArea(areaId) {
 }
 
 function showAreaDetails(areaId) {
-    const area = state.areas[state.currentFloor].find(a => a.id === areaId);
+    const area = state.plants[state.currentPlant].areas[state.currentFloor].find(a => a.id === areaId);
     if (!area) return;
     
     // Garantir que a sidebar está visível
@@ -765,13 +882,14 @@ function createEquipmentItem(eq, type, idx) {
 function updateAreasList() {
     const list = document.getElementById('areas-list');
     list.innerHTML = '';
-    if (state.areas[state.currentFloor].length === 0) {
+    if (state.plants[state.currentPlant].areas[state.currentFloor].length === 0) {
         list.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 2rem;">Nenhuma área cadastrada ainda</p>';
         return;
     }
-    state.areas[state.currentFloor].forEach(area => {
+    state.plants[state.currentPlant].areas[state.currentFloor].forEach(area => {
         const item = document.createElement('div');
         item.className = 'area-item';
+        if (state.currentPlant === 'csc') item.classList.add('csc-area');
         if (state.currentAreaId === area.id) item.classList.add('active');
         item.innerHTML = `<h3>${area.name}</h3><div class="area-type">${area.type}</div>`;
         item.onclick = () => selectArea(area.id);
@@ -863,7 +981,7 @@ function saveEquipment() {
             model: model
         };
     }
-    const area = state.areas[state.currentFloor].find(a => a.id === state.currentAreaId);
+    const area = state.plants[state.currentPlant].areas[state.currentFloor].find(a => a.id === state.currentAreaId);
     if (area) {
         const list = state.currentEquipmentType === 'notebook' ? area.notebooks : area.printers;
         if (state.editingEquipmentId) {
@@ -881,7 +999,7 @@ function saveEquipment() {
 
 function deleteEquipment(type, idx) {
     if (!confirm('Tem certeza que deseja excluir este equipamento?')) return;
-    const area = state.areas[state.currentFloor].find(a => a.id === state.currentAreaId);
+    const area = state.plants[state.currentPlant].areas[state.currentFloor].find(a => a.id === state.currentAreaId);
     if (area) {
         const list = type === 'notebook' ? area.notebooks : area.printers;
         list.splice(idx, 1);
@@ -893,9 +1011,9 @@ function deleteEquipment(type, idx) {
 function deleteArea() {
     if (!state.currentAreaId) { alert('Nenhuma área selecionada para excluir.'); return; }
     if (!confirm('Tem certeza que deseja excluir esta área? Todos os equipamentos serão removidos.')) return;
-    const idx = state.areas[state.currentFloor].findIndex(a => a.id === state.currentAreaId);
+    const idx = state.plants[state.currentPlant].areas[state.currentFloor].findIndex(a => a.id === state.currentAreaId);
     if (idx !== -1) {
-        state.areas[state.currentFloor].splice(idx, 1);
+        state.plants[state.currentPlant].areas[state.currentFloor].splice(idx, 1);
         state.currentAreaId = null;
         updateAreasOverlay();
         updateAreasList();
@@ -906,8 +1024,8 @@ function deleteArea() {
 
 function resetPlant() {
     if (!confirm('Tem certeza que deseja resetar? Isso irá remover a imagem e todas as áreas do andar atual!')) return;
-    state.plantImages[state.currentFloor] = null;
-    state.areas[state.currentFloor] = [];
+    state.plants[state.currentPlant].plantImages[state.currentFloor] = null;
+    state.plants[state.currentPlant].areas[state.currentFloor] = [];
     state.currentAreaId = null;
     state.isDrawing = false;
     state.drawingStart = null;
@@ -998,7 +1116,7 @@ function closeEquipmentViewModal() {
 }
 
 function openAreaInfoModal(areaId) {
-    const area = state.areas[state.currentFloor].find(a => a.id === areaId);
+    const area = state.plants[state.currentPlant].areas[state.currentFloor].find(a => a.id === areaId);
     if (!area) return;
 
     const modal = document.getElementById('area-info-modal');
@@ -1164,12 +1282,15 @@ async function loadFromStorage() {
         if (res.ok) {
             const data = await res.json();
             console.log('Dados carregados da API:', {
-                areas: Object.keys(data.areas || {}).reduce((sum, floor) => sum + (data.areas[floor]?.length || 0), 0),
-                hasImage1: !!data.plantImages?.[1],
-                hasImage2: !!data.plantImages?.[2]
+                clinicaAreas: Object.keys(data.plants?.clinica?.areas || {}).reduce((sum, floor) => sum + (data.plants?.clinica?.areas[floor]?.length || 0), 0),
+                cscAreas: Object.keys(data.plants?.csc?.areas || {}).reduce((sum, floor) => sum + (data.plants?.csc?.areas[floor]?.length || 0), 0),
+                hasClinicaImages: !!data.plants?.clinica?.plantImages?.[1] || !!data.plants?.clinica?.plantImages?.[2] || !!data.plants?.clinica?.plantImages?.[3],
+                hasCscImages: !!data.plants?.csc?.plantImages?.[1] || !!data.plants?.csc?.plantImages?.[2] || !!data.plants?.csc?.plantImages?.[3]
             });
-            state.areas = data.areas || state.areas;
-            state.plantImages = data.plantImages || state.plantImages;
+            if (data.plants) {
+                state.plants = data.plants;
+            }
+            state.currentPlant = data.currentPlant || 'clinica';
             state.currentFloor = data.currentFloor || 1;
             loaded = true;
         } else {
@@ -1184,8 +1305,10 @@ async function loadFromStorage() {
             const saved = localStorage.getItem('clinicPlantData');
             if (saved) {
                 const parsed = JSON.parse(saved);
-                state.areas = parsed.areas || state.areas;
-                state.plantImages = parsed.plantImages || state.plantImages;
+                if (parsed.plants) {
+                    state.plants = parsed.plants;
+                }
+                state.currentPlant = parsed.currentPlant || 'clinica';
                 state.currentFloor = parsed.currentFloor || 1;
             }
         } catch (e) {
@@ -1193,8 +1316,20 @@ async function loadFromStorage() {
         }
     }
 
+    document.getElementById('plant-select').value = state.currentPlant;
+    
+    // Atualizar opções de andares/setores baseado na planta carregada
+    updateFloorOptions();
+    
+    // Verificar se o andar atual existe na planta carregada
+    const currentPlantFloors = state.plants[state.currentPlant].floors;
+    const floorExists = currentPlantFloors.some(floor => floor.id === state.currentFloor);
+    if (!floorExists) {
+        state.currentFloor = currentPlantFloors[0].id;
+    }
+    
     document.getElementById('floor-select').value = state.currentFloor;
-    const url = state.plantImages[state.currentFloor];
+    const url = state.plants[state.currentPlant].plantImages[state.currentFloor];
     if (url) {
         // Aguardar que o DOM esteja completamente pronto antes de exibir a planta
         // Usar múltiplos requestAnimationFrame para garantir renderização completa
@@ -1223,7 +1358,7 @@ document.getElementById('area-image-input')?.addEventListener('change', (e) => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-        const area = state.areas[state.currentFloor].find(a => a.id === state.currentAreaId);
+        const area = state.plants[state.currentPlant].areas[state.currentFloor].find(a => a.id === state.currentAreaId);
         if (area) {
             area.image = ev.target.result; // base64
             updateAreasOverlay();
@@ -1237,7 +1372,7 @@ document.getElementById('area-image-input')?.addEventListener('change', (e) => {
 
 function removeAreaImage() {
     if (!state.currentAreaId) return;
-    const area = state.areas[state.currentFloor].find(a => a.id === state.currentAreaId);
+    const area = state.plants[state.currentPlant].areas[state.currentFloor].find(a => a.id === state.currentAreaId);
     if (area && area.image) {
         area.image = null;
         updateAreasOverlay();

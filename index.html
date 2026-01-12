@@ -10,12 +10,15 @@
     <div class="container">
         <!-- Header -->
         <header class="header">
-            <h1>🏥 Planta Interativa da Clínica</h1>
+            <div class="title-section">
+                <select id="plant-select" class="plant-select">
+                    <option value="clinica">🏥 Cliniprev</option>
+                    <option value="csc">🏢 CSC - Angelus</option>
+                </select>
+            </div>
             <div class="controls">
-                <label for="floor-select" class="floor-label">Andar:</label>
+                <label for="floor-select" class="floor-label" id="floor-sector-label">Andar:</label>
                 <select id="floor-select" class="floor-select">
-                    <option value="1">1º Andar</option>
-                    <option value="2">2º Andar</option>
                 </select>
                 <button id="add-area-btn" class="btn btn-primary">+ Adicionar Área</button>
                 <button id="upload-btn" class="btn btn-secondary">📤 Upload Planta</button>
